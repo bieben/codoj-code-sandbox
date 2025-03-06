@@ -62,7 +62,7 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
         String code = executeCodeRequest.getCode();
         String language = executeCodeRequest.getLanguage();
 
-//        1. 把用户的代码保存为文件
+        // 1. 把用户的代码保存为文件
 
         String userDir = System.getProperty("user.dir");
         String globalCodePathName = userDir + File.separator + GLOBAL_CODE_DIR_NAME;
@@ -77,16 +77,16 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
         File userCodeFile = FileUtil.writeString(code, userCodePath, StandardCharsets.UTF_8);
 
 //        2. 编译代码，得到 class 文件
-        String compileCmd = String.format("javac -encoding utf-8 %s", userCodeFile.getAbsolutePath());
-        try {
-            Process compileProcess = Runtime.getRuntime().exec(compileCmd);
-            ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(compileProcess, "编译");
-            System.out.println(executeMessage);
-        } catch (Exception e) {
-            return getErrorResponse(e);
-        }
+//        String compileCmd = String.format("javac -encoding utf-8 %s", userCodeFile.getAbsolutePath());
+//        try {
+//            Process compileProcess = Runtime.getRuntime().exec(compileCmd);
+//            ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(compileProcess, "编译");
+//            System.out.println(executeMessage);
+//        } catch (Exception e) {
+//            return getErrorResponse(e);
+//        }
 
-        // 3. 创建容器，把文件复制到容器内
+        // 2. 创建容器，把文件复制到容器内
         // 获取默认的 Docker Client
         DockerClient dockerClient = DockerClientBuilder.getInstance().build();
 
@@ -120,7 +120,7 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
         hostConfig.withMemory(100 * 1000 * 1000L);
         hostConfig.withMemorySwap(0L);
         hostConfig.withCpuCount(1L);
-        hostConfig.withSecurityOpts(Arrays.asList("seccomp=安全管理配置字符串"));
+        hostConfig.withSecurityOpts(Arrays.asList("seccomp=unconfined"));
         hostConfig.setBinds(new Bind(userCodeParentPath, new Volume("/app")));
         CreateContainerResponse createContainerResponse = containerCmd
                 .withHostConfig(hostConfig)
@@ -133,9 +133,23 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
                 .exec();
         System.out.println(createContainerResponse);
         String containerId = createContainerResponse.getId();
-
         // 启动容器
         dockerClient.startContainerCmd(containerId).exec();
+        // 在 Docker 内编译 Java 代码
+        String compileCmd = "javac -encoding utf-8 /app/Main.java";
+        ExecCreateCmdResponse execCompile = dockerClient.execCreateCmd(containerId)
+                .withCmd("sh", "-c", compileCmd)
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .exec();
+
+        ExecStartResultCallback compileCallback = new ExecStartResultCallback();
+        try {
+            dockerClient.execStartCmd(execCompile.getId()).exec(compileCallback).awaitCompletion();
+        } catch (InterruptedException e) {
+            throw new RuntimeException("编译失败", e);
+        }
+
 
         // docker exec keen_blackwell java -cp /app Main 1 3
         // 执行命令并获取结果
@@ -218,7 +232,7 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
                 stopWatch.start();
                 dockerClient.execStartCmd(execId)
                         .exec(execStartResultCallback)
-                        .awaitCompletion(TIME_OUT, TimeUnit.MICROSECONDS);
+                        .awaitCompletion(5, TimeUnit.SECONDS);
                 stopWatch.stop();
                 time = stopWatch.getLastTaskTimeMillis();
                 statsCmd.close();
@@ -263,7 +277,7 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
 
         executeCodeResponse.setJudgeInfo(judgeInfo);
 
-//        5. 文件清理
+        // 5. 文件清理
         if (userCodeFile.getParentFile() != null) {
             boolean del = FileUtil.del(userCodeParentPath);
             System.out.println("删除" + (del ? "成功" : "失败"));
