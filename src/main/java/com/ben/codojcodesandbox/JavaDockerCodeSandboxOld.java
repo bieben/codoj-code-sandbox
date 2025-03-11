@@ -14,7 +14,6 @@ import com.ben.codojcodesandbox.model.ExecuteCodeRequest;
 import com.ben.codojcodesandbox.model.ExecuteCodeResponse;
 import com.ben.codojcodesandbox.model.ExecuteMessage;
 import com.ben.codojcodesandbox.model.JudgeInfo;
-import com.ben.codojcodesandbox.utils.ProcessUtils;
 import org.springframework.util.StopWatch;
 
 import java.io.Closeable;
@@ -34,10 +33,6 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
     private static final String GLOBAL_JAVA_CLASS_NAME = "Main.java";
 
     private static final long TIME_OUT = 5000L;
-
-    private static final String SECURITY_MANAGER_PATH = "/Users/yitezheng/CV/java/oj/codoj-code-sandbox/src/main/resources/security";
-
-    private static final String SECURITY_MANAGER_CLASS_NAME = "MySecurityManager";
 
     private static final Boolean FIRST_INIT = true;
 

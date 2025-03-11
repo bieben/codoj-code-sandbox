@@ -28,6 +28,8 @@ public class ProcessUtils {
             StopWatch stopWatch = new StopWatch();
             stopWatch.start();
             // 等待程序执行，获取错误码
+            Thread.sleep(500);
+            System.out.println("Available bytes in InputStream: " + runProcess.getInputStream().available());
             int exitValue = runProcess.waitFor();
             executeMessage.setExitValue(exitValue);
             // 正常退出
